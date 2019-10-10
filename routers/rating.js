@@ -1,7 +1,7 @@
 const express = require('express')
 const router = new express.Router()
-const auth = require('../../middleware/auth')
-const Rating = require('../models/rating')
+const auth = require('../middleware/auth')
+const Rating = require('../src/models/rating')
 
 router.post('/ratings/:id',auth,  async (req, res) => {
     
@@ -22,16 +22,13 @@ router.post('/ratings/:id',auth,  async (req, res) => {
 //GET/tasks?limit=10&skip=10 limit results on page and skips the first n instances
 //GET /tasks?sortBy=createdAt:desc
 router.get('/ratings', auth, async (req,res) => {
-    const match = {} 
     const sort = {}
     
     if(req.query.sortBy) {
         const parts = req.query.sortBy.split(':')
         sort[parts[0]] = parts[1] === 'desc' ? -1 : 1
     }
-    try{
-        //const tasks = await Task.find({})
-        //const tasks = await Task.find({owner: req.user._id})
+    try{      
         await req.user.populate({
             path: 'ratings',
             options: {
@@ -40,15 +37,14 @@ router.get('/ratings', auth, async (req,res) => {
                 }
             }
         }).execPopulate()
-        
-        req.send(req.user.ratings)
+        res.send(req.user.ratings)
     }
     catch(error)  {
         res.status(500).send()
     }
 })
-
-router.get('/ratings/to/:id', auth, async (req,res) => {
+// individual route for getting the rate for a specific user with id fromo the logged in user
+router.get('/ratings/:id', auth, async (req,res) => {
     const _id = req.params.id
     try{
         const rating = await Rating.find({toUser:_id, giverUser: req.user._id})
@@ -61,13 +57,11 @@ router.get('/ratings/to/:id', auth, async (req,res) => {
     }
 })
 
-
-
 router.patch('/ratings/:id',auth, async (req, res) => {
 
-    const updates = Object.keys(req.body)// converts from obj to array
+    const updates = Object.keys(req.body)
     const allowedUpdates = ['rate','comm']
-    const isValidOperation = updates.every((item) => { // every runs through the elems of the array, if every value return true then 'every' return true
+    const isValidOperation = updates.every((item) => { 
         return allowedUpdates.includes(item)
     })
     if(!isValidOperation){
