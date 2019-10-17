@@ -84,7 +84,7 @@ router.patch('/users/me', auth, async (req, res) => {
     }
 })
 const upload = multer({
-    dest:'avatars',
+    //dest:'avatars',
     limits: {
         fileSize: 1000000
     },
@@ -95,19 +95,44 @@ const upload = multer({
                 callback(undefined, true)
             }
 })
-router.post('/users/me/avatar',upload.single('avatar'),(req,res) => {
+
+// add profile pic
+router.post('/users/me/avatar',auth, upload.single('avatar'),async (req,res) => {
+    req.user.avatar = req.file.buffer
+    await req.user.save()
     res.send()
+},(error,req, res, next) => {
+    res.status(400).send({error: error.message})
 }) 
+
+//delete profile pic
+router.delete('/users/me/avatar',auth, async (req, res) => {
+    req.user.avatar = undefined
+    await req.user.save()
+    res.send()
+})
+// access profile pic of user by id
+router.get('/users/:id/avatar',async (req,res) => {
+    try{
+        const user = await User.findById(req.params.id)
+        if(!user || !user.avatar){
+            throw new Error()
+        }
+        res.set('Content-Type','image/jpg')
+        res.send(user.avatar)
+    }catch(error){
+        res.status(404).send()
+    }
+})
+
 router.delete('/users/me', auth, async (req, res) => {
     try{
-        //const user = await User.findByIdAndDelete(req.user._id) //we already got the user from auth
-        // if(!user) {  
-        //     return res.status(404).send()
-        // } 
         await req.user.remove()
         res.send(req.user)
     }catch(error) {
         res.status(500).send(error)
     }
 })
+
+
 module.exports = router
